@@ -2,14 +2,30 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Resposta struct {
 	Nome    string `json:"nome"`
 	Horario string `json:"horario"`
+}
+
+var (
+	httpRequestsTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Volume total de requisições no endpoint /projeto-korp",
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(httpRequestsTotal)
 }
 
 func projetoKorpHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,11 +34,14 @@ func projetoKorpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	httpRequestsTotal.Inc()
+
 	horaUTC := time.Now().UTC().Format(time.RFC3339)
 
-	var response Resposta
-	response.Nome = "Projeto Korp"
-	response.Horario = horaUTC
+	response := Resposta{
+		Nome:    "Projeto Korp",
+		Horario: horaUTC,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -30,10 +49,10 @@ func projetoKorpHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/projeto-korp", projetoKorpHandler)
+	http.Handle("/metrics", promhttp.Handler())
 
-	fmt.Println("Servidor rodando na porta 8080...")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		panic(err)
+	log.Println("Iniciando o servidor...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Erro crítico ao iniciar o servidor: %v", err)
 	}
 }

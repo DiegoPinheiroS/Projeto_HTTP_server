@@ -1,9 +1,9 @@
 FROM golang:1.26.3-alpine AS builder
 WORKDIR /build
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY main.go ./
-RUN CGO_ENALBLED=0 GOOS=linux go build -o http-server-projeto-korp .
+RUN CGO_ENABLED=0 GOOS=linux go build -o http-server-projeto-korp .
 
 FROM alpine:latest
 WORKDIR /app
