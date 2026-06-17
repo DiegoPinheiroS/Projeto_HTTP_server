@@ -20,6 +20,26 @@ services:
       - app-go
     networks:
       - rede-projeto-korp
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - rede-projeto-korp
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - rede-projeto-korp
 
 networks:
   rede-projeto-korp:
