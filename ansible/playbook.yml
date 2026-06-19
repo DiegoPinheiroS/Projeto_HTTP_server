@@ -1,0 +1,84 @@
+---
+- name: Provisionamento da Stack de Monitoramento (Projeto Korp)
+  hosts: projetohttp_servers
+  become: yes
+
+  tasks:
+    - name: 1. Atualizar o cache do gerenciador de pacotes (apt)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: 2. Instalar dependências do sistema
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+        state: present
+
+    - name: 3. Criar diretório para chaves do Docker
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: 4. Adicionar chave GPG oficial do Docker
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: 5. Adicionar repositório oficial do Docker
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: 6. Instalar o Docker e Docker Compose Plugin
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        
+    - name: 6.5. Adicionar o usuário do deploy ao grupo docker
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: 7. Garantir que o serviço do Docker está rodando e ativo no boot
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: 8. Criar pasta do Projeto Korp na VM alvo
+      file:
+        path: /opt/projeto-korp
+        state: directory
+        mode: '0755'
+
+    - name: 9. Copiar os arquivos de configuração locais para a VM
+      copy:
+        src: "../" # Copia tudo da raiz do projeto
+        dest: /opt/projeto-korp/
+        mode: '0755'
+
+    - name: 10. Garantir permissões corretas para o volume do Grafana (UID 472)
+      file:
+        path: /opt/projeto-korp/grafana
+        owner: "472"
+        group: "472"
+        recurse: yes
+
+    - name: 11. Subir a stack usando o Docker Compose Plugin
+      shell:
+        cmd: docker compose up -d
+        chdir: /opt/projeto-korp
