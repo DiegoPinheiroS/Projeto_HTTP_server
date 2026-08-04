@@ -80,5 +80,23 @@
 
     - name: 11. Subir a stack usando o Docker Compose Plugin
       shell:
-        cmd: docker compose up -d
+        cmd: docker compose up -d --build
         chdir: /opt/projeto-korp
+
+    - name: 12. Aguardar o serviço subir
+      wait_for:
+        host: localhost
+        port: 80
+        delay: 3
+        timeout: 30
+
+    - name: 13. Validar o endpoint /projeto-korp
+      uri:
+        url: http://localhost/projeto-korp
+        method: GET
+        return_content: yes
+      register: resposta_korp
+
+    - name: 14. Exibir a resposta no console
+      debug:
+        var: resposta_korp.content
